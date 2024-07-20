@@ -68,8 +68,9 @@ with st.sidebar:
 page = st.session_state.page
 
 if page == "Home":
-    st.header("Welcome to the Home Page")
-    st.write("This is the main page of our application.")
+    st.header("Welcome to the Health Insights")
+    st.subheader("We provide image analysis of chronic diseases and various diagnostic report analysis.")
+    st.image("TEKsystems-Blog-Image-1200x672.jpg")
 
 elif page == "Cancer":
     AZURE_TRANSLATOR_KEY = AZURE_KEY
