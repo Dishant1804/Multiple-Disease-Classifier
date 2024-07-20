@@ -4,6 +4,12 @@ from PIL import Image
 import google.generativeai as genai
 import numpy as np
 import tensorflow as tf
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+AZURE_KEY = os.getenv('AZURE_TRANSLATE_KEY')
+GEMINI_KEY = os.getenv('GEMINI_API_KEY')
 
 # Initialize session state for navigation
 if "page" not in st.session_state:
@@ -66,7 +72,7 @@ if page == "Home":
     st.write("This is the main page of our application.")
 
 elif page == "Cancer":
-    AZURE_TRANSLATOR_KEY = "5d807d71150544c79e767709cca00191"
+    AZURE_TRANSLATOR_KEY = AZURE_KEY
     AZURE_TRANSLATOR_ENDPOINT = "https://api.cognitive.microsofttranslator.com"
     AZURE_TRANSLATOR_REGION = "centralindia"
 
@@ -91,36 +97,9 @@ elif page == "Cancer":
                 translated_chunks.append(translations[0]['translations'][0]['text'])
         
                 return ''.join(translated_chunks)
-    language_codes = {
-        "English": "en",
-        "Hindi": "hi",
-        "Tamil": "ta",
-        "Telugu": "te",
-        "Bengali": "bn",
-        "Gujarati": "gu",
-        "Marathi": "mr",
-        "Kannada": "kn",
-        "Malayalam": "ml",
-        "Punjabi": "pa",
-        "Odia": "or",
-        "Assamese": "as",
-        "Urdu": "ur",
-        "Sanskrit": "sa",
-        "Konkani": "kok",
-        "Maithili": "mai",
-        "Sindhi": "sd",
-        "Dogri": "doi",
-        "Santali": "sat",
-        "Kashmiri": "ks",
-        "Nepali": "ne",
-        "Manipuri": "mni",
-        "Bodo": "brx"
-    }
-
-    selected_language = st.selectbox("Select language for response", list(language_codes.keys()))
 
 
-    API_KEY = "AIzaSyCo4fhOIneKKNTApo7WdkGkAvfSwXQgpf0"
+    API_KEY = GEMINI_KEY
     genai.configure(api_key=API_KEY)
 
     def get_gemini_response(input, prompt):
@@ -135,7 +114,7 @@ elif page == "Cancer":
         img = np.expand_dims(img, axis=0)  # Add batch dimension
         return img
 
-    model = tf.keras.models.load_model('/home/dishant/programs/ML/Hackathon/saved_model/melanoma_detection_model.h5', compile=False)
+    model = tf.keras.models.load_model('saved_model/melanoma_detection_model.h5', compile=False)
 
     def main():
         st.title('Skin-Cancer Disease Identifier')
@@ -179,27 +158,22 @@ elif page == "Cancer":
                 **Disclaimer** : //now at the end you will give the disclaimer that the patient should consult the doctor
                 """
                 response = get_gemini_response(input, input_prompts)
-                if selected_language != "English":
-                    translated_response = translate_text(response, language_codes[selected_language])
-                    st.subheader(f"Diagnosis Report in {selected_language}:")
-                    st.write(translated_response)
-                else:
-                    st.subheader("Diagnosis Report:")
-                    translated_response = translate_text(response, language_codes[selected_language])
-                    st.write(translated_response)
-                st.subheader(f"The Dietary plan for age {age} is : ")
-                st.write(translated_response)
+                if response:
+                  st.subheader("Diagnosis Report (English):")
+                  st.subheader(f"The Dietary plan for age {age} is:")
+                  st.markdown(response)
+          
                 
 
     if __name__ == '__main__':
         main()
 
 elif page == "ReportDiagnosis":
-    AZURE_TRANSLATOR_KEY = "5d807d71150544c79e767709cca00191"
+    AZURE_TRANSLATOR_KEY = AZURE_KEY
     AZURE_TRANSLATOR_ENDPOINT = "https://api.cognitive.microsofttranslator.com"
     AZURE_TRANSLATOR_REGION = "centralindia"
 
-    API_KEY = "AIzaSyCo4fhOIneKKNTApo7WdkGkAvfSwXQgpf0"
+    API_KEY = GEMINI_KEY
     genai.configure(api_key=API_KEY)
 
     def get_gemini_response(input, image, prompt):
@@ -297,7 +271,15 @@ elif page == "ReportDiagnosis":
         if uploaded_file is not None:
             image_parts = input_image_setup(uploaded_file)
             input_text = f"User has uploaded the image for diagnosis. User details are age: {age}, height: {height}cm, weight: {weight}kg."
-            input_prompts = "You are an expert in image diagnostics. Based on the uploaded image and user details, provide a detailed diagnostic report and relevant dietary advice."
+            input_prompts = """
+                As an expert medical diagnostician:
+                1. Identify the type of medical image/report.
+                2. Describe key observations, focusing on abnormalities.
+                3. List potential conditions suggested by these findings.
+                4. Recommend any necessary follow-up tests.
+                5. Emphasize this is a preliminary analysis requiring professional confirmation.
+                Provide a clear, structured response based solely on visible information.
+        """
             response = get_gemini_response(input_text, image_parts, input_prompts)
 
             if selected_language != "English":
@@ -318,81 +300,47 @@ elif page == "Kidney":
     import google.generativeai as genai
     import requests
 
-    AZURE_TRANSLATOR_KEY = "5d807d71150544c79e767709cca00191"
+    AZURE_TRANSLATOR_KEY = AZURE_KEY
     AZURE_TRANSLATOR_ENDPOINT = "https://api.cognitive.microsofttranslator.com"
     AZURE_TRANSLATOR_REGION = "centralindia"
 
     def translate_text(text, dest_language):
-            url = f"{AZURE_TRANSLATOR_ENDPOINT}/translate?api-version=3.0&to={dest_language}"
-            headers = {
-                'Ocp-Apim-Subscription-Key': AZURE_TRANSLATOR_KEY,
-                'Ocp-Apim-Subscription-Region': AZURE_TRANSLATOR_REGION,
-                'Content-Type': 'application/json'
-            }
+        url = f"{AZURE_TRANSLATOR_ENDPOINT}/translate?api-version=3.0&to={dest_language}"
+        headers = {
+            'Ocp-Apim-Subscription-Key': AZURE_TRANSLATOR_KEY,
+            'Ocp-Apim-Subscription-Region': AZURE_TRANSLATOR_REGION,
+            'Content-Type': 'application/json'
+        }
 
-            max_chunk_size = 500
-            chunks = [text[i:i+max_chunk_size] for i in range(0, len(text), max_chunk_size)]
+        max_chunk_size = 500
+        chunks = [text[i:i+max_chunk_size] for i in range(0, len(text), max_chunk_size)]
         
-            translated_chunks = []
+        translated_chunks = []
 
-            for chunk in chunks:
-                body = [{'text': chunk}]
-                response = requests.post(url, headers=headers, json=body)
-                response.raise_for_status()
-                translations = response.json()
-                translated_chunks.append(translations[0]['translations'][0]['text'])
+        for chunk in chunks:
+            body = [{'text': chunk}]
+            response = requests.post(url, headers=headers, json=body)
+            response.raise_for_status()
+            translations = response.json()
+            translated_chunks.append(translations[0]['translations'][0]['text'])
         
-                return ''.join(translated_chunks)
-    language_codes = {
-        "English": "en",
-        "Hindi": "hi",
-        "Tamil": "ta",
-        "Telugu": "te",
-        "Bengali": "bn",
-        "Gujarati": "gu",
-        "Marathi": "mr",
-        "Kannada": "kn",
-        "Malayalam": "ml",
-        "Punjabi": "pa",
-        "Odia": "or",
-        "Assamese": "as",
-        "Urdu": "ur",
-        "Sanskrit": "sa",
-        "Konkani": "kok",
-        "Maithili": "mai",
-        "Sindhi": "sd",
-        "Dogri": "doi",
-        "Santali": "sat",
-        "Kashmiri": "ks",
-        "Nepali": "ne",
-        "Manipuri": "mni",
-        "Bodo": "brx"
-    }
+        return ' '.join(translated_chunks)
 
-    selected_language = st.selectbox("Select language for response", list(language_codes.keys()))
-
-
-
-    API_KEY = "AIzaSyCo4fhOIneKKNTApo7WdkGkAvfSwXQgpf0"
+    API_KEY = GEMINI_KEY
     genai.configure(api_key=API_KEY)
 
-## Function to load OpenAI model and get response
     def get_gemini_response(input, prompt):
         model = genai.GenerativeModel('gemini-1.5-flash')
         response = model.generate_content([input, prompt])
         return response.text
 
-# Load model from local file
-# @st.cache(allow_output_mutation=True)
     def load_model():
-        model = tf.keras.models.load_model('/home/dishant/programs/ML/Hackathon/saved_model/kidney_stone_detection_model.h5', compile=False)
+        model = tf.keras.models.load_model('saved_model/kidney_stone_detection_model.h5', compile=False)
         return model
 
     model = load_model()
-# labels = ['Normal', 'Cyst', 'Tumor', 'Stone'] # Update with your actual labels
-    labels = ['Cyst', 'Normal', 'Stone', 'Tumor'] # Update with your actual labels
+    labels = ['Cyst', 'Normal', 'Stone', 'Tumor']
 
-# Streamlit UI
     st.title("Kidney Condition Identifier")
     st.write("Upload a CT scan image of the kidney to predict its condition.")
 
@@ -400,12 +348,10 @@ elif page == "Kidney":
     age = st.number_input("Age", min_value=0, max_value=120)
     height = st.number_input("Height (cm)", min_value=50, max_value=250)
     weight = st.number_input("Weight (kg)", min_value=10, max_value=250)
+
     if uploaded_file is not None:
         img = image.load_img(uploaded_file, target_size=(290, 290))
         st.image(img, caption='Uploaded Image.', use_column_width=True)
-        # age = st.number_input("Age", min_value=0, max_value=120)
-        # height = st.number_input("Height (cm)", min_value=50, max_value=250)
-        # weight = st.number_input("Weight (kg)", min_value=10, max_value=250)
 
         if st.button("Submit"):
             img = image.load_img(uploaded_file, target_size=(299, 299))
@@ -417,14 +363,12 @@ elif page == "Kidney":
 
             st.write("")
 
-            st.subheader(
-                "Patient might have {}"
-                .format(labels[np.argmax(score)])
-            )
-            input = f"user has {labels[np.argmax(score)]} disease and age:{age}, height:{height}, and weight:{weight}, so according to this give me a diet plan."
+            predicted_condition = labels[np.argmax(score)]
+            st.subheader(f"Patient might have: {predicted_condition}")
+
+            input = f"User has {predicted_condition} and age:{age}, height:{height}, and weight:{weight}, so according to this give me a diet plan."
             input_prompts = f"""
-            in the first message
-            You are an expert dietitian. You will receive input on the user's age, height, weight, and their specific medical condition is {labels[np.argmax(score)]}, which in this case is vascular lesions. Based on this information, you will provide general dietary guidance while making sure to include specific considerations for the user's age group. 
+            You are an expert dietitian. You will receive input on the user's age, height, weight, and their specific medical condition is {predicted_condition}. Based on this information, you will provide general dietary guidance while making sure to include specific considerations for the user's age group.
         
             The response should be structured as follows:
             **Dietary plan should include**: //here give the dietary advice according to their height, weight and age give 5-6 points
@@ -435,18 +379,12 @@ elif page == "Kidney":
             """
 
             response = get_gemini_response(input, input_prompts)
-            if selected_language != "English":
-                    translated_response = translate_text(response, language_codes[selected_language])
-                    st.subheader(f"Diagnosis Report in {selected_language}:")
-                    st.write(translated_response)
-            else:
-                st.subheader("Diagnosis Report:")
-                translated_response = translate_text(response, language_codes[selected_language])
-                st.write(translated_response)
-            st.subheader(f"The Dietary plan for age {age} is : ")
-            st.write(translated_response)
+            if response:
+                st.subheader("Diagnosis Report (English):")
+                st.subheader(f"The Dietary plan for age {age} is:")
+                st.markdown(response)
     else:
-        st.write("Please upload an image file.")  
+        st.write("Please upload an image file.")
 
 elif page == "Pneumonia":
     import streamlit as st
@@ -457,7 +395,7 @@ elif page == "Pneumonia":
     from torchvision import models
     import google.generativeai as genai
 
-    AZURE_TRANSLATOR_KEY = "5d807d71150544c79e767709cca00191"
+    AZURE_TRANSLATOR_KEY = AZURE_KEY
     AZURE_TRANSLATOR_ENDPOINT = "https://api.cognitive.microsofttranslator.com"
     AZURE_TRANSLATOR_REGION = "centralindia"
 
@@ -482,36 +420,9 @@ elif page == "Pneumonia":
                 translated_chunks.append(translations[0]['translations'][0]['text'])
         
                 return ''.join(translated_chunks)
-    language_codes = {
-        "English": "en",
-        "Hindi": "hi",
-        "Tamil": "ta",
-        "Telugu": "te",
-        "Bengali": "bn",
-        "Gujarati": "gu",
-        "Marathi": "mr",
-        "Kannada": "kn",
-        "Malayalam": "ml",
-        "Punjabi": "pa",
-        "Odia": "or",
-        "Assamese": "as",
-        "Urdu": "ur",
-        "Sanskrit": "sa",
-        "Konkani": "kok",
-        "Maithili": "mai",
-        "Sindhi": "sd",
-        "Dogri": "doi",
-        "Santali": "sat",
-        "Kashmiri": "ks",
-        "Nepali": "ne",
-        "Manipuri": "mni",
-        "Bodo": "brx"
-    }
-
-    selected_language = st.selectbox("Select language for response", list(language_codes.keys()))
 
 
-    API_KEY = "AIzaSyCo4fhOIneKKNTApo7WdkGkAvfSwXQgpf0"
+    API_KEY = GEMINI_KEY
     genai.configure(api_key=API_KEY)
 
 ## Function to load OpenAI model and get response
@@ -536,7 +447,7 @@ elif page == "Pneumonia":
     def load_model():
     # Load the model with 1000 output classes
         model = CustomNeuralNetResNet(1000)
-        model.load_state_dict(torch.load('/home/dishant/programs/ML/Hackathon/saved_model/pneumonia_classifier_model.h5', map_location=torch.device('cpu')))
+        model.load_state_dict(torch.load('saved_model/pneumonia_classifier_model.h5', map_location=torch.device('cpu')))
     
     # Modify the final layer to have 3 output classes
         num_ftrs = model.net.fc.in_features
@@ -602,13 +513,7 @@ elif page == "Pneumonia":
             """
 
             response = get_gemini_response(input, input_prompts)
-            if selected_language != "English":
-                    translated_response = translate_text(response, language_codes[selected_language])
-                    st.subheader(f"Diagnosis Report in {selected_language}:")
-                    st.write(translated_response)
-            else:
-                st.subheader("Diagnosis Report:")
-                translated_response = translate_text(response, language_codes[selected_language])
-                st.write(translated_response)
-            st.subheader(f"The Dietary plan for age {age} is : ")
-            st.write(translated_response)   
+            if response:
+                st.subheader("Diagnosis Report (English):")
+                st.subheader(f"The Dietary plan for age {age} is:")
+                st.markdown(response)
