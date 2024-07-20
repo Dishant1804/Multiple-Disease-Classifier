@@ -55,6 +55,6 @@ if st.button("Register"):
             hashed_password = hash_password(new_password)
             users_collection.insert_one({"username": new_username, "password": hashed_password})
             st.success("User registered successfully!")
-            st.switch_page("pages/Login.py")
+            st.switch_page("Login.py")
     else:
         st.error("Please provide a username and password")
